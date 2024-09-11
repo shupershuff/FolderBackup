@@ -16,6 +16,7 @@ if ($debug -eq $True){#courtesy of https://thesurlyadmin.com/2015/10/20/transcri
 	Get-ChildItem "$LogPath\*.log" | Where LastWriteTime -LT (Get-Date).AddDays(-$KeepLogsFor) | Remove-Item -Confirm:$false
 	$LogPathName = Join-Path -Path $LogPath -ChildPath "$($MyInvocation.MyCommand.Name)-$(Get-Date -Format 'MM-dd-yyyy').debug.log"
 	Start-Transcript $LogPathName -Append
+	write-host "banana"
 }
 $ScriptFileName = Split-Path $MyInvocation.MyCommand.Path -Leaf
 $WorkingDirectory = ((Get-ChildItem -Path $PSScriptRoot)[0].fullname).substring(0,((Get-ChildItem -Path $PSScriptRoot)[0].fullname).lastindexof('\')) #Set Current Directory path.
@@ -299,6 +300,7 @@ Function ExitFunction {#Used to write to log prior to exit
 	Exit
 }
 WriteLog -newline
+WriteLog -info "Starting Backup Procedure..."
 if ($PathToBackup -eq ""){
 	WriteLog -errorlog "Path to Folder to Backup wasn't specified." #if no backup path specified in config
 	WriteLog -errorlog -newline "Please use parameter -PathToBackup `"<YourFilepathHere>`""
