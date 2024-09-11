@@ -10,6 +10,7 @@ Requires parameters to run:
  - "-PathToBackup <Filepath>" - Required to run. This specifies what directory you want to backup
  - "-PathToSaveBackup <Filepath>" - Optional. Path where backups should be stored. If not specified, the parent directory of the PathToBackup will be used instead.
  - "-Zip" - Optional. Instead of copy/pasting the directory, script will create a .zip file instead.
+ - "-NoLogging" - Optional. Disables writing to log file.
 
 As an example, using task scheduler you can setup an hourly action to use the following program and arguments:<br>
 **Program:** C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe<br>
