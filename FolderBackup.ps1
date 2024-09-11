@@ -58,14 +58,14 @@ Function WriteLog {
 	Else {
 		$Script:LogFile = ($WorkingDirectory + "\" + $CustomLogFile)
 	} 
-	if ((Test-Path $LogFile) -ne $true){
+	if ((Test-Path $LogFile) -ne $true -and $NoLogging -eq $False){
 		Add-content $LogFile -value "" #Create empty Logfile
 	}
 	if (!(($Info,$Verbose,$Errorlog,$Warning,$Success) -eq $True)) {
 		$Info = $True #If no parameter has been specified, Set the Default log entry to type: Info
 	}
     $DateTime = "[{0:dd/MM/yy} {0:HH:mm:ss}]" -f (Get-Date)
-	If ($CheckedLogFile -ne $True){
+	If ($CheckedLogFile -ne $True -and $NoLogging -eq $False){
 		$fileContent = Get-Content -Path $Script:LogFile
 		if  ($Null -ne $fileContent){
 			if ($fileContent[2] -match '\[(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})\]') {#look at 3rd line of log file and match the date patern.
@@ -122,7 +122,7 @@ Function WriteLog {
 	if ($True -eq $NewLine){#Overwrite $LogMessage to remove headers if -newline is enabled
 		$LogMessage = "                                $LogString"
 	}
-	if (($NoLogging -eq $False -or ($CustomLogFile -ne "" -and $LogPlayers -eq $True)) -and $NoNewLine -eq $True ){#Overwrite $LogMessage to put text immediately after last line if -nonewline is enabled
+	if (($NoLogging -eq $False -or $CustomLogFile -ne "") -and $NoNewLine -eq $True ){#Overwrite $LogMessage to put text immediately after last line if -nonewline is enabled
 		$LogContent = (Get-Content -Path $LogFile -Raw) # Read the content of the file
 		if ($logcontent -match ' \r?\n\r?\n$' -or $logcontent -match ' \r?\n$' -or $logcontent -match ' \r?\n$' -or $logcontent[-1] -eq " "){#if the last characters in the file is a space a space with one or two line breaks
 			$Space = " "
@@ -137,7 +137,7 @@ Function WriteLog {
 	}
 	while ($Complete -ne $True -and $WriteAttempts -ne 3){
 		try {
-			if (($NoLogging -eq $False -or ($CustomLogFile -ne "" -and $LogPlayers -eq $True)) -and $NoNewLine -eq $False ){ #if user has disabled logging, eg on sensors that check every minute or so, they may want logging disabled.
+			if (($NoLogging -eq $False -or $CustomLogFile -ne "") -and $NoNewLine -eq $False ){ #if user has disabled logging, eg on sensors that check every minute or so, they may want logging disabled.
 				Add-content $LogFile -value $LogMessage -ErrorAction Stop
 				$Complete = $True
 			}
