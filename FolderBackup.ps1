@@ -153,6 +153,25 @@ Function WriteLog {
 	}
 }
 Function Backup {
+	# Helper function to calculate a folder hash
+	Function Get-FolderHash {
+		param ([string]$folderPath)	
+		# Get all files in the folder, sorted by name to ensure consistency
+		$files = Get-ChildItem -Path $folderPath -Recurse | Sort-Object FullName
+		# Initialize a string to combine file hashes
+		$combinedHashes = ""
+		# Calculate a hash for each file
+		foreach ($file in $files) {
+			if (-not $file.PSIsContainer) {
+				$fileHash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+				$combinedHashes += $fileHash.Hash
+			}
+		}
+		# Hash the combined string of file hashes
+		$finalHash = [System.BitConverter]::ToString((New-Object Security.Cryptography.SHA256Managed).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($combinedHashes)))
+		return $finalHash.Replace("-", "")
+	}
+	
 	# Get the current date and time
 	$currentDateTime = Get-Date
 	# Format the date and time components
@@ -161,28 +180,37 @@ Function Backup {
 	$day = $currentDateTime.ToString("dd")
 	$hour = $currentDateTime.ToString("HHmm")
 
+	# Check if there's a previous backup hash to compare
+    $HashFilePath = Join-Path -Path $PathToSaveBackup -ChildPath "last_backup_hash.txt"
+    $PreviousHash = if (Test-Path $HashFilePath) { Get-Content $HashFilePath } else { "" }
+
+    # Calculate the current folder hash
+    $CurrentHash = Get-FolderHash -folderPath $PathToBackup
+
+    # Compare hashes and decide if a backup is needed
+    if ($CurrentHash -eq $PreviousHash) {
+        WriteLog -info "Backup: Folder has not changed since the last backup. No backup will be made."
+        return
+    }
+
 	# Construct the destination path
 	$destinationPath = Join-Path -Path $PathToSaveBackup -ChildPath "$year\$month\$day\$hour"
 	# Create the destination directory if it doesn't exist
 	if (-not (Test-Path $destinationPath)) {
-		WriteLog -info -noconsole "Backup: Creating Backup Folder in $PathToSaveBackup"
+		WriteLog -info "Backup: Creating Backup Folder in $PathToSaveBackup"
 		New-Item -ItemType Directory -Path $destinationPath -Force | out-null
 	}
 
-	# Copy the folder to the destination
-	#Copy-Item -Path $PathToBackup -Destination $destinationPath -Recurse -Force | out-null
-	#Writelog -success -noconsole "Backup: "
-	#Writelog -success -nonewline "Backup completed. Save Data copied to: $destinationPath"
-	
-	# If the Zip switch is used, create a zip file instead of copying the folder
-	if ($Zip) {
-		$zipFilePath = Join-Path -Path $PathToSaveBackup -ChildPath ("$year\$month\$day\$Hour\$Year." + $currentDateTime.ToString("MM") + ".$day-$hour.zip")
-		WriteLog -info "Backup: Creating ZIP archive at $zipFilePath"
+	# Copy the folder to the destination or create a zip file
+	if ($Zip) { # If the Zip switch is used, create a zip file instead of copying the folder
+		$ZipFilePath = Join-Path -Path $PathToSaveBackup -ChildPath ("$year\$month\$day\$Hour\$Year." + $currentDateTime.ToString("MM") + ".$day-$hour.zip")
+		WriteLog -info "Backup: Creating ZIP archive at $ZipFilePath"
 		try {
 			# Use Compress-Archive to zip the folder
-			Compress-Archive -Path "$PathToBackup\*" -DestinationPath $zipFilePath
-			WriteLog -success "Backup: ZIP archive created at $zipFilePath"
-		} catch {
+			Compress-Archive -Path "$PathToBackup\*" -DestinationPath $ZipFilePath
+			WriteLog -success "Backup: ZIP archive created at $ZipFilePath"
+		}
+		catch {
 			WriteLog -error "Backup: Failed to create ZIP archive. $_"
 		}
 	} else {
@@ -190,6 +218,8 @@ Function Backup {
 		Copy-Item -Path $PathToBackup -Destination $destinationPath -Recurse -Force | Out-Null
 		WriteLog -success "Backup: Save Data copied to: $destinationPath"
 	}
+	# Save the current folder hash for future comparisons
+	$CurrentHash | Out-File -FilePath $HashFilePath -Force	
 	
 	#Start Cleanup Tasks
 	Writelog -info -noconsole "Backup: "
