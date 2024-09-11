@@ -7,7 +7,7 @@ Notes: Run this with Task Scheduler
 #>
 
 param(
-	[String]$PathToBackup,[String]$PathToSaveBackup,[Switch]$NoLogging,[switch]$debug
+	[String]$PathToBackup,[String]$PathToSaveBackup,[Switch]$NoLogging,[switch]$zip,[switch]$debug
 )
 if ($debug -eq $True){#courtesy of https://thesurlyadmin.com/2015/10/20/transcript-logging-why-you-should-do-it/
 	$KeepLogsFor = 15
@@ -170,9 +170,27 @@ Function Backup {
 	}
 
 	# Copy the folder to the destination
-	Copy-Item -Path $PathToBackup -Destination $destinationPath -Recurse -Force | out-null
-	Writelog -success -noconsole "Backup: "
-	Writelog -success -nonewline "Backup completed. Save Data copied to: $destinationPath"
+	#Copy-Item -Path $PathToBackup -Destination $destinationPath -Recurse -Force | out-null
+	#Writelog -success -noconsole "Backup: "
+	#Writelog -success -nonewline "Backup completed. Save Data copied to: $destinationPath"
+	
+	# If the Zip switch is used, create a zip file instead of copying the folder
+	if ($Zip) {
+		$zipFilePath = Join-Path -Path $PathToSaveBackup -ChildPath ("$year\$month\$day\$Hour\$Year." + $currentDateTime.ToString("MM") + ".$day-$hour.zip")
+		WriteLog -info "Backup: Creating ZIP archive at $zipFilePath"
+		try {
+			# Use Compress-Archive to zip the folder
+			Compress-Archive -Path "$PathToBackup\*" -DestinationPath $zipFilePath
+			WriteLog -success "Backup: ZIP archive created at $zipFilePath"
+		} catch {
+			WriteLog -error "Backup: Failed to create ZIP archive. $_"
+		}
+	} else {
+		# Copy the folder to the destination if not zipping
+		Copy-Item -Path $PathToBackup -Destination $destinationPath -Recurse -Force | Out-Null
+		WriteLog -success "Backup: Save Data copied to: $destinationPath"
+	}
+	
 	#Start Cleanup Tasks
 	Writelog -info -noconsole "Backup: "
 	Writelog -info -nonewline "Checking for old backups that can be cleaned up..."
@@ -241,7 +259,6 @@ Function Backup {
 	Else {
 		Writelog -success -nonewline "No cleanup required."
 	}
-
 }
 Function ExitFunction {#Used to write to log prior to exit
 	if ($ErrorOut -eq $True){
